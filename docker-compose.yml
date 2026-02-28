@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  agent:
+    build: .
+    container_name: personal-ai-agent
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    volumes:
+      - agent-data:/data
+      - agent-workspaces:/app/workspaces
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/data/agent.db
+      - SCHEDULER_DB_PATH=/data/scheduler.db
+      - WORKSPACE_ROOT=/app/workspaces
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  agent-data:
+    driver: local
+  agent-workspaces:
+    driver: local

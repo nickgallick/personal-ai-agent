@@ -1,0 +1,14 @@
+streamlit==1.42.2
+langgraph==0.3.34
+langchain-core==0.3.43
+httpx==0.28.1
+python-dotenv==1.1.0
+PyGithub==2.6.0
+playwright==1.50.0
+apscheduler==3.11.0
+SQLAlchemy==2.0.38
+pandas==2.2.3
+openpyxl==3.1.5
+PyPDF2==3.0.1
+Pillow==11.1.0
+python-magic==0.4.27
