@@ -13,11 +13,13 @@ import os
 from typing import Any
 
 try:
-    from utils.api_clients import SonarClient
+    import config
+    from utils.api_clients import SonarClient, TavilyClient
     from utils.error_handling import format_error
 except ModuleNotFoundError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from utils.api_clients import SonarClient
+    import config
+    from utils.api_clients import SonarClient, TavilyClient
     from utils.error_handling import format_error
 
 logger = logging.getLogger(__name__)
@@ -27,20 +29,28 @@ async def execute_search(description: str, context: str = "") -> dict[str, Any]:
     logger.debug("execute_search: query=%r context_len=%d", description[:80], len(context))
 
     try:
-        client = SonarClient()
-        system_prompt: str | None = context.strip() if context and context.strip() else None
-        response = await client.search(query=description, system_prompt=system_prompt)
+        provider = getattr(config, "SEARCH_PROVIDER", "sonar").lower()
 
-        content: str = ""
-        try:
-            content = response["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            content = str(response)
+        if provider == "tavily":
+            tavily_client = TavilyClient()
+            result = await tavily_client.search(query=description)
+            content = result.get("content", "")
+            citations = result.get("citations", [])
+        else:
+            client = SonarClient()
+            system_prompt: str | None = context.strip() if context and context.strip() else None
+            response = await client.search(query=description, system_prompt=system_prompt)
 
-        citations: list[str] = []
-        raw_citations = response.get("citations", [])
-        if isinstance(raw_citations, list):
-            citations = [str(c) for c in raw_citations if c]
+            content = ""
+            try:
+                content = response["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, TypeError):
+                content = str(response)
+
+            citations = []
+            raw_citations = response.get("citations", [])
+            if isinstance(raw_citations, list):
+                citations = [str(c) for c in raw_citations if c]
 
         return {"content": content, "citations": citations, "success": True}
 
