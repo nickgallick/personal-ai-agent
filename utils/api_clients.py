@@ -104,6 +104,44 @@ class SonarClient:
         return await self.search(query, model=config.MODEL_ROUTING["search_quick"])
 
 
+class TavilyClient:
+    """Async client for Tavily search API, normalising output to {content, citations}."""
+
+    def __init__(self, api_key: str | None = None) -> None:
+        self._api_key: str = api_key or config.TAVILY_API_KEY
+        if not self._api_key:
+            raise ValueError("Tavily API key is required. Set TAVILY_API_KEY in your environment.")
+
+    async def search(self, query: str, search_depth: str = "advanced", topic: str = "general", max_results: int = 10, **_: Any) -> dict[str, Any]:
+        from tavily import AsyncTavilyClient as _AsyncTavilyClient
+
+        client = _AsyncTavilyClient(api_key=self._api_key)
+        response = await client.search(
+            query=query,
+            search_depth=search_depth,
+            topic=topic,
+            max_results=max_results,
+        )
+
+        # Normalise to {content, citations} shape matching SonarClient output
+        parts: list[str] = []
+        citations: list[str] = []
+        for result in response.get("results", []):
+            title = result.get("title", "")
+            snippet = result.get("content", "")
+            url = result.get("url", "")
+            if snippet:
+                parts.append(f"**{title}**\n{snippet}" if title else snippet)
+            if url:
+                citations.append(url)
+
+        content = "\n\n".join(parts) if parts else response.get("answer", str(response))
+        return {"content": content, "citations": citations}
+
+    async def quick_search(self, query: str) -> dict[str, Any]:
+        return await self.search(query, search_depth="basic", max_results=5)
+
+
 class OpenRouterClient:
     """Async client for the OpenRouter API (OpenAI-compatible)."""
 

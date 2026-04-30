@@ -12,3 +12,4 @@ openpyxl==3.1.5
 PyPDF2==3.0.1
 Pillow==11.1.0
 python-magic==0.4.27
+tavily-python>=0.5.0

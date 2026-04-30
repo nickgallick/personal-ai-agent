@@ -16,6 +16,12 @@ load_dotenv()
 SONAR_API_KEY: str = os.getenv("SONAR_API_KEY", "")
 OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
+TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+
+# ---------------------------------------------------------------------------
+# Search Provider — 'sonar' (default) or 'tavily'
+# ---------------------------------------------------------------------------
+SEARCH_PROVIDER: str = os.getenv("SEARCH_PROVIDER", "sonar")
 
 # ---------------------------------------------------------------------------
 # API Endpoints
@@ -66,6 +72,7 @@ def validate_config() -> dict[str, bool]:
         "sonar_api_key": bool(SONAR_API_KEY),
         "openrouter_api_key": bool(OPENROUTER_API_KEY),
         "github_token": bool(GITHUB_TOKEN),
+        "tavily_api_key": bool(TAVILY_API_KEY),
     }
 
 
