@@ -1,9 +1,4 @@
-"""
-Sonar search executor agent.
-
-Wraps the Perplexity Sonar API to perform deep web searches and return
-structured results with content and citations.
-"""
+"""Search executor returning content and citations from the selected provider."""
 
 from __future__ import annotations
 
@@ -13,20 +8,32 @@ import os
 from typing import Any
 
 try:
+    import config
     from utils.api_clients import SonarClient
     from utils.error_handling import format_error
 except ModuleNotFoundError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    import config
     from utils.api_clients import SonarClient
     from utils.error_handling import format_error
 
 logger = logging.getLogger(__name__)
 
 
-async def execute_search(description: str, context: str = "") -> dict[str, Any]:
+async def execute_search(
+    description: str, context: str = "", session_id: str | None = None,
+) -> dict[str, Any]:
     logger.debug("execute_search: query=%r context_len=%d", description[:80], len(context))
 
     try:
+        provider = config.get_search_provider()
+        if provider == "none":
+            return {"content": "Web search is disabled (SEARCH_PROVIDER=none).", "citations": [], "success": False}
+        if provider == "parallel":
+            from utils.parallel_search import ParallelSearchClient
+
+            return await ParallelSearchClient().search(description, context, session_id)
+
         client = SonarClient()
         system_prompt: str | None = context.strip() if context and context.strip() else None
         response = await client.search(query=description, system_prompt=system_prompt)

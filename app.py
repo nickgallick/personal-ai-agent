@@ -804,12 +804,26 @@ def _render_sidebar() -> None:
 
             if _HAS_CONFIG:
                 status = validate_config()
+                try:
+                    search_provider = config.get_search_provider()
+                except ValueError as exc:
+                    search_provider = "invalid"
+                    st.error(str(exc))
+                search_labels = {
+                    "parallel": "Parallel (no search API key needed)",
+                    "sonar": "Perplexity Sonar",
+                    "none": "Disabled",
+                }
+                if search_provider in search_labels:
+                    st.caption("Web search: " + search_labels[search_provider])
                 key_labels = {
                     "sonar_api_key": ("Sonar (Search)", "SONAR_API_KEY"),
                     "openrouter_api_key": ("OpenRouter (LLM)", "OPENROUTER_API_KEY"),
                     "github_token": ("GitHub", "GITHUB_TOKEN"),
                 }
                 for key, (label, _env) in key_labels.items():
+                    if key == "sonar_api_key" and search_provider != "sonar":
+                        continue
                     connected = status.get(key, False)
                     dot_color = "#1B7F64" if connected else "#EF4444"
                     status_text = "Connected" if connected else "Missing"
@@ -842,6 +856,8 @@ def _render_sidebar() -> None:
                     "image": "Image",
                 }
                 for route_key, route_label in routing_display.items():
+                    if route_key.startswith("search_") and search_provider != "sonar":
+                        continue
                     model_id = MODEL_ROUTING.get(route_key, "—")
                     short_model = model_id.split("/")[-1] if "/" in model_id else model_id
                     st.markdown(
@@ -872,7 +888,15 @@ def _render_setup_warning() -> None:
         return
 
     status = validate_config()
-    missing = [k for k, v in status.items() if not v]
+    try:
+        search_provider = config.get_search_provider()
+    except ValueError as exc:
+        st.warning(str(exc))
+        return
+    missing = [
+        k for k, v in status.items()
+        if not v and (k != "sonar_api_key" or search_provider == "sonar")
+    ]
     if not missing:
         return
 
