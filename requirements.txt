@@ -2,6 +2,7 @@ streamlit==1.42.2
 langgraph==0.3.34
 langchain-core==0.3.43
 httpx==0.28.1
+mcp==1.30.0
 python-dotenv==1.1.0
 PyGithub==2.6.0
 playwright==1.50.0

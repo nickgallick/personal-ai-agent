@@ -5,7 +5,7 @@ A production-ready personal AI agent that replicates the core functionality of P
 ## Features
 
 - **Multi-model orchestration** — LangGraph StateGraph routes tasks to specialized executors
-- **Web search with citations** — Perplexity Sonar Pro API returns sourced, cited answers
+- **Web search with citations** — Parallel Search MCP supplies web excerpts without a search API key; configured Sonar users keep Perplexity Sonar Pro
 - **Code generation and execution** — Writes, runs, and self-corrects code (up to 3 retries)
 - **Web browsing** — Playwright-powered headless Chromium for navigating real pages
 - **Image generation** — OpenRouter image models (Flux, DALL·E, etc.)
@@ -26,7 +26,7 @@ User Message
      ▼
    Router  ──→  Finds next ready subtask
      │
-     ├──→ Search Executor   (Sonar Pro API)
+     ├──→ Search Executor   (Parallel Search MCP / Sonar Pro API)
      ├──→ Code Executor     (Claude via OpenRouter + subprocess)
      ├──→ Reason Executor   (GPT via OpenRouter)
      ├──→ Browse Executor   (Playwright)
@@ -80,7 +80,30 @@ streamlit run app.py
 
 ## Getting API Keys
 
-### Perplexity Sonar API (required)
+### Web search
+
+With no search configuration, research tasks use free anonymous
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp),
+powered by Fast mode for search. No Parallel account or API key is needed.
+The search executor passes source excerpts and URLs to the existing response
+synthesizer. OpenRouter is still required for planning and synthesis.
+
+If `SONAR_API_KEY` is already set, the agent keeps using Sonar. Set
+`SEARCH_PROVIDER` in `.env` to choose explicitly:
+
+| Value | Behavior |
+|-------|----------|
+| Unset or empty | Sonar when `SONAR_API_KEY` is set; otherwise Parallel |
+| `parallel` | Parallel, even if a Sonar key is present |
+| `sonar` | Sonar; requires `SONAR_API_KEY` |
+| `none` | Disable web search tasks |
+
+Provider failures are reported without switching providers. Parallel search has
+a 60-second timeout and respects task cancellation. The free service has usage
+limits; a quota error is reported as a failed search. Web browsing continues to
+use Playwright.
+
+### Perplexity Sonar API (optional)
 
 1. Go to [https://www.perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
 2. Sign in or create an account
@@ -170,8 +193,8 @@ Models are configured in `config.py` via the `MODEL_ROUTING` dictionary. Change 
 | Fast | `openai/gpt-4.1-mini` | Quick lookups, parsing |
 | Long Context | `openai/gpt-4.1` | Large document processing |
 | Image | `black-forest-labs/flux-schnell` | Image generation |
-| Deep Search | `sonar-pro` | In-depth web search |
-| Quick Search | `sonar` | Fast web lookups |
+| Sonar Deep Search | `sonar-pro` | In-depth web search when using Sonar |
+| Sonar Quick Search | `sonar` | Fast web lookups when using Sonar |
 
 You can override any model via environment variables:
 ```bash
@@ -225,7 +248,7 @@ fly volumes create agent_data --size 1 --region ord
 
 5. Set your secrets:
 ```bash
-fly secrets set SONAR_API_KEY=pplx-your-key-here
+fly secrets set SONAR_API_KEY=pplx-your-key-here  # optional, selects Sonar
 fly secrets set OPENROUTER_API_KEY=sk-or-your-key-here
 fly secrets set GITHUB_TOKEN=ghp_your-token-here  # optional
 ```
@@ -249,7 +272,8 @@ fly open
 3. Select **Deploy from GitHub repo** and connect your repo
 
 4. Add environment variables in the Railway dashboard:
-   - `SONAR_API_KEY`
+   - `SONAR_API_KEY` (optional, selects Sonar)
+   - `SEARCH_PROVIDER` (optional, explicitly select `parallel`, `sonar`, or `none`)
    - `OPENROUTER_API_KEY`
    - `GITHUB_TOKEN` (optional)
 
@@ -271,7 +295,7 @@ personal-agent/
 ├── agents/
 │   ├── __init__.py
 │   ├── planner.py            # Task planning agent
-│   ├── search.py             # Sonar API search executor
+│   ├── search.py             # Parallel / Sonar search executor
 │   ├── coder.py              # Code generation + execution + self-correction
 │   ├── reasoner.py           # General reasoning executor
 │   ├── browser.py            # Playwright web browsing executor
@@ -285,6 +309,7 @@ personal-agent/
 ├── utils/
 │   ├── __init__.py
 │   ├── api_clients.py        # Sonar and OpenRouter API client wrappers
+│   ├── parallel_search.py    # Anonymous Parallel Search MCP client
 │   └── error_handling.py     # Error handling and fallback logic
 ├── styles.css                # Custom dark theme CSS for Streamlit
 ├── .env.example              # Template with all required env vars
@@ -305,7 +330,7 @@ personal-agent/
 
 The app shows status indicators in the sidebar settings. Green = connected, red = missing.
 
-- **Sonar API key**: Must start with `pplx-`. Get one at [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
+- **Sonar API key**: Needed only for Sonar search. Must start with `pplx-`. Get one at [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api). Without a Sonar key or explicit provider, search uses Parallel.
 - **OpenRouter API key**: Must start with `sk-or-`. Get one at [openrouter.ai/keys](https://openrouter.ai/keys)
 - **GitHub token**: Must start with `ghp_` or `github_pat_`. Get one at [github.com/settings/tokens](https://github.com/settings/tokens)
 
@@ -357,6 +382,9 @@ rm data/agent.db data/scheduler.db
 ---
 
 ## Cost Estimates
+
+The search costs below apply to the Sonar provider. Parallel Search MCP offers
+free anonymous search within its usage limits; OpenRouter usage is separate.
 
 | Usage Level | Sonar API | OpenRouter | Total |
 |-------------|-----------|------------|-------|

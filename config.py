@@ -17,6 +17,17 @@ SONAR_API_KEY: str = os.getenv("SONAR_API_KEY", "")
 OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
 GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 
+# An explicit choice wins; existing Sonar credentials keep their provider.
+SEARCH_PROVIDER: str = os.getenv("SEARCH_PROVIDER", "").strip().lower()
+
+
+def get_search_provider() -> str:
+    """Resolve web search without falling back after a configured provider fails."""
+    provider = SEARCH_PROVIDER or ("sonar" if SONAR_API_KEY else "parallel")
+    if provider not in {"parallel", "sonar", "none"}:
+        raise ValueError("SEARCH_PROVIDER must be parallel, sonar, or none.")
+    return provider
+
 # ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------

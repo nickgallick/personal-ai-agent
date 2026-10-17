@@ -266,6 +266,7 @@ async def search_executor_node(state: AgentState) -> dict:
         result = await search.execute_search(
             description=task["description"],
             context=context,
+            session_id=state.get("session_id"),
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("search_executor_node error: %s", exc, exc_info=True)
